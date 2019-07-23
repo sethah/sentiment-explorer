@@ -1,0 +1,16 @@
+flask
+
+flask-cors
+
+gevent
+
+pytorch-pretrained-bert>=0.6
+
+scikit-learn
+
+git+https://github.com/fastforwardlabs/nbsvm
+
+nltk
+lime
+
+allennlp
