@@ -70,10 +70,13 @@ class ServerError(Exception):
         return error_dict
 
 
-def make_app(google_analytics_ua: str) -> Flask:
+def make_app(google_analytics_ua: str,
+             bert_path: str,
+             baseline_path: str,
+             device: int = -1) -> Flask:
     # model_117M = GPT2LanguageModel(model_name='117M')
-    # model_345M = GPT2LanguageModel(model_name='345M')
-    with open("/Users/shendrickson/nbsvm_imdb_sent_500.pkl", "rb") as f:
+    # model_345M = GPT2LanguageModel(model_name='345M')"/home/sethah/ssd/ff11-dev/models/new_imdb_sent_500/nbsvm_imdb_sent_500.pkl"
+    with open(baseline_path, "rb") as f:
         model = pickle.load(f)
     nbsvm = model.steps[1][1]
     nbsvm.predict_proba = nbsvm._predict_proba_lr
@@ -83,9 +86,12 @@ def make_app(google_analytics_ua: str) -> Flask:
     splitter = SpacySentenceSplitter()
     nbsvm_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
                                   bow=True, split_expression=splitter.split_sentences)
-    model_path = Path("/Users/shendrickson/bert_large0")
+    model_path = Path(bert_path)
     archive = load_archive(model_path / "model.tar.gz")
     bert_model = archive.model
+    bert_model.eval()
+    if device >= 0:
+        bert_model.to(device)
     params = Params.from_file(model_path / "config.json")
     reader = DatasetReader.from_params(params.get("dataset_reader"))
     vocab = Vocabulary.from_files(model_path / "vocabulary")
@@ -159,20 +165,23 @@ def make_app(google_analytics_ua: str) -> Flask:
                 probs = [p['probs'] for p in preds]
                 return np.stack(probs, axis=0)
 
-            # explanation = bert_explainer.explain_instance(previous_str, _lime_predict,
-            #                                                num_features=10,
-            #                                                labels=[1],
-            #                                                num_samples=500)
-            # score_dict = dict(explanation.as_list(1))
-            # lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
-            out = bert_model.forward_on_instance(reader.text_to_instance(previous_str))
+            inst = reader.text_to_instance(previous_str)
+            print(inst.fields['tokens'].tokens)
+            out = bert_model.forward_on_instance(inst)
+            print(out.keys())
             class_probabilities = out['probs'].tolist()
+            label = out['label']
+            explanation = bert_explainer.explain_instance(previous_str, _lime_predict,
+                                                           num_features=10,
+                                                           labels=[1],
+                                                           num_samples=100)
+            score_dict = dict(explanation.as_list(1))
+            lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
             # class_probabilities = [random.random() for _ in range(2)]
-            lime_scores = [random.random() for _ in range(len(lime_tokens))]
+            # lime_scores = [random.random() for _ in range(len(lime_tokens))]
             # class_probabilities = [x / max(class_probabilities) for x in class_probabilities]
-            label = 'neg' if class_probabilities[0] > class_probabilities[1] else 'pos'
+            # label = 'neg' if class_probabilities[0] > class_probabilities[1] else 'pos'
             # out = predictor.predict_json({'sentence': previous_str})
-            # label = out['label']
         app.logger.info(label)
         app.logger.info(lime_scores)
         app.logger.info(lime_tokens)
@@ -189,77 +198,6 @@ def make_app(google_analytics_ua: str) -> Flask:
             "sentiment": label
         })
 
-    # This endpoint isn't used, so it's commented out. You can re-enable
-    # it by uncommenting it.
-    #
-    # @app.route('/random', methods=['POST', 'OPTIONS'])
-    # def random() -> Response:  # pylint: disable=unused-variable
-    #     if request.method == "OPTIONS":
-    #         return Response(response="", status=200)
-    #     data = request.get_json()
-    #     previous_str = data["previous"]
-    #     next_str = data.get("next", None)
-    #     topk = data.get("topk", 10)
-    #     num_steps = data.get('numsteps', 1)
-    #     temperature = data.get("temperature", 1.0)
-    #     logits = model.predict(previous_str, next_str)
-    #     probabilities = torch.nn.functional.softmax(logits / temperature)
-    #     samples = torch.multinomial(probabilities, num_samples=topk, replacement=False)
-    #     outputs = [(f"{previous_str}{next_str or ''}", model[idx.item()]) for idx in samples]
-    #     for _ in range(num_steps - 1):
-    #         new_outputs = []
-    #         for p, n in outputs:
-    #             logits = model.predict(p, n)
-    #             probabilities = torch.nn.functional.softmax(logits / temperature)
-    #             random_id = random_sample(logits / temperature)
-    #             random_word = model[random_id]
-    #             random_word_logit = logits[random_id].item()
-    #             random_word_probability = probabilities[random_id].item()
-    #             new_outputs.append((f"{p}{n}", random_word))
-    #         outputs = new_outputs
-    #     return jsonify({
-    #         "previous": previous_str,
-    #         "words": [f"{p}{n}" for p, n in outputs],
-    #         "logits": [0 for _ in outputs],
-    #         "probabilities": [0 for _ in outputs]
-    #     })
-
-    # This endpoint isn't used, so it's commented out. You can re-enable
-    # it by uncommenting it.
-    #
-    # @app.route('/beam', methods=['POST', 'OPTIONS'])
-    # def beam() -> Response:  # pylint: disable=unused-variable
-    #     if request.method == "OPTIONS":
-    #         return Response(response="", status=200)
-    #     data = request.get_json()
-    #     previous_str = data["previous"]
-    #     next_str = data.get("next", "")
-    #     topk = data.get("topk", 10)
-    #     num_steps = data['numsteps']
-    #     def candidates(s1: str = "", s2: str = None, score: float = 0.0) -> List[BeamElement]:
-    #         logits = model.predict(previous_str + s1, s2)
-    #         log_probabilities = torch.nn.functional.log_softmax(logits) + score
-    #         best_log_probabilities, best_indices = log_probabilities.topk(topk)
-    #         new_str = s1 if s2 is None else s1 + s2
-    #         beam = [BeamElement(lp.item() + score, new_str, model[idx.item()])
-    #                 for lp, idx in zip(best_log_probabilities, best_indices)]
-    #         return beam
-    #     # Initial step
-    #     beam = candidates(next_str)
-    #     for i in range(num_steps - 1):
-    #         new_beam: List[BeamElement] = []
-    #         for element in beam:
-    #             new_beam.extend(candidates(element.prev_str, element.next_str, element.score))
-    #         new_beam.sort(key=lambda elt: elt.score, reverse=True)
-    #         beam = new_beam[:topk]
-    #     return jsonify({
-    #         "previous": previous_str,
-    #         "words": [elt.prev_str + elt.next_str for elt in beam],
-    #         "logits": [elt.score for elt in beam],
-    #         "probabilities": [elt.score for elt in beam]
-    #     })
-
-
     return app
 
 
@@ -271,6 +209,9 @@ def main(args):
     parser = argparse.ArgumentParser(description='Serve up a simple model')
 
     parser.add_argument('--port', type=int, default=8000, help='port to serve the demo on')
+    parser.add_argument('--device', type=int, default=-1, help='device to host model on')
+    parser.add_argument('--bert-path', type=str)
+    parser.add_argument('--baseline-path', type=str)
     parser.add_argument('--dev', action='store_true', help='if true launch flask so that the server restarted as changes occur to the template')
 
     args = parser.parse_args(args)
@@ -278,7 +219,9 @@ def main(args):
     app = make_app(google_analytics_ua=os.environ.get(
         "GOOGLE_ANALYTICS_UA",
         "UA-120916510-5" # Defaults to the development / staging UA
-    ))
+    ), device=args.device,
+    bert_path=args.bert_path,
+        baseline_path=args.baseline_path)
     CORS(app)
 
     if args.dev:

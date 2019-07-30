@@ -159,11 +159,11 @@ const SentimentOutput = ({sentiment}) => {
 }
 
 const LinkHome = styled.a`
-  background-image: url('static/ai2-logo-header.png');
-  background-size: 360px 71px;
+  background-image: url('static/cloudera.png');
+  background-size: 300px 40px;
   backround-repeat: no-repeat;
-  width: 360px;
-  height: 71px;
+  width: 300px;
+  height: 40px;
   display: block;
   margin: 0 1rem 0 0;
 
@@ -325,7 +325,7 @@ const Footer = styled.div`
   margin: 2rem 0 0 0;
 `
 
-const DEFAULT = "Joel is";
+const DEFAULT = "Avengers Endgame was without a doubt the neatest movie ever.";
 
 function addToUrl(output, choice) {
   if ('history' in window) {
@@ -355,6 +355,7 @@ class App extends React.Component {
 
     this.state = {
       output: loadFromUrl() || DEFAULT,
+      prev: null,
       words: null,
       label: null,
       lime_tokens: null,
@@ -379,13 +380,10 @@ class App extends React.Component {
     const trimmed = trimRight(value);
 
     this.setState({
+        prev: this.state.output,
         output: value,
-        words: null,
         logits: null,
         label: null,
-        lime_tokens: null,
-        lime_scores: null,
-        class_probabilities: null,
         loading: trimmed.length > 0
     })
     this.debouncedChoose()
@@ -425,7 +423,17 @@ class App extends React.Component {
   }
 
   choose(choice = undefined, doNotChangeUrl) {
-    this.setState({ loading: true, error: false })
+    //this.setState({ loading: true, error: false })
+    this.setState({
+        words: null,
+        logits: null,
+        label: null,
+        lime_tokens: null,
+        lime_scores: null,
+        class_probabilities: null,
+        loading: true,
+        error: false
+    })
 
     // strip trailing spaces
     const trimmedOutput = trimRight(this.state.output);
@@ -485,10 +493,16 @@ class App extends React.Component {
   render() {
     return (
       <Wrapper>
+        <Title>
+          <LinkHome href="https://experiments.fastforwardlabs.com" target="_blank"></LinkHome>
+          <AppName>Textflix Sentiment Analyzer</AppName>
+        </Title>
         <Intro>
-        <ModelSwitcher model={this.state.model} switchModel={this.switchModel}/>
         This is a sentiment analyzer. You write a review and we tell you how you felt about it.
         </Intro>
+        <span>Choose which model to use:
+        <ModelSwitcher model={this.state.model} switchModel={this.switchModel}/>
+        </span>
         <InputOutput>
           <InputOutputColumn>
             <InputHeader>Sentence:</InputHeader>
