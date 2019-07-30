@@ -4,12 +4,12 @@ flask-cors
 
 gevent
 
-pytorch-pretrained-bert>=0.6
-
 scikit-learn
 
 nltk
+
 lime
 
 allennlp
+
 gunicorn
