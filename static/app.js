@@ -360,7 +360,6 @@ class App extends React.Component {
       label: null,
       lime_tokens: null,
       lime_scores: null,
-      logits: null,
       class_probabilities: null,
       loading: false,
       error: false,
@@ -382,7 +381,6 @@ class App extends React.Component {
     this.setState({
         prev: this.state.output,
         output: value,
-        logits: null,
         label: null,
         loading: trimmed.length > 0
     })
@@ -406,7 +404,6 @@ class App extends React.Component {
           output,
           loading: true,
           words: null,
-          logits: null,
           label: null,
           lime_tokens: null,
           lime_scores: null,
@@ -426,7 +423,6 @@ class App extends React.Component {
     //this.setState({ loading: true, error: false })
     this.setState({
         words: null,
-        logits: null,
         label: null,
         lime_tokens: null,
         lime_scores: null,
@@ -561,52 +557,5 @@ const Sentences = ({sentences}) => {
 
   return <p>{sentences.join(" ")}</p>
 }
-
-const Choices = ({output, logits, words, choose, probabilities}) => {
-  if (!words) { return null }
-
-  const lis = words.map((word, idx) => {
-    const logit = logits[idx]
-    const prob = formatProbability(probabilities[idx])
-
-    // get rid of CRs
-    const cleanWord = word.replace(/\n/g, "↵")
-
-    return (
-      <ListItem key={`${idx}-${cleanWord}`}>
-        <ChoiceItem onClick={() => choose(word)}>
-          <Probability>{prob}</Probability>
-          {' '}
-          <Token>{cleanWord}</Token>
-        </ChoiceItem>
-      </ListItem>
-    )
-  })
-
-  const goBack = () => {
-    window.history.back();
-  }
-
-  const goBackItem = (
-    <ListItem key="go-back">
-      {'history' in window ? (
-        <UndoButton onClick={goBack}>
-          <Probability>←</Probability>
-          {' '}
-          <Token>Undo</Token>
-        </UndoButton>
-      ) : null}
-    </ListItem>
-  )
-
-  return (
-    <ChoiceList>
-      {lis}
-      {goBackItem}
-    </ChoiceList>
-  )
-}
-
-
 
 ReactDOM.render(<App />, document.getElementById("app"))

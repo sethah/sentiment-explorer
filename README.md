@@ -1,6 +1,3 @@
-# lm-explorer
-interactive explorer for language models (currently only OpenAI GPT-2)
-
 ## Running with Docker
 
 ```bash
