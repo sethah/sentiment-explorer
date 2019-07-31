@@ -219,8 +219,9 @@ def main(args):
         app.run(port=args.port, host='0.0.0.0')
         print(f"Model loaded, serving demo on port {args.port}")
     else:
-        http_server = WSGIServer(('0.0.0.0', args.port), app, log=sys.stdout)
-        print(f"Model loaded, serving demo on port {args.port}")
+        port = os.environ.get("PORT")
+        http_server = WSGIServer(('0.0.0.0', port), app, log=sys.stdout)
+        print(f"Model loaded, serving demo on port {port}")
         http_server.serve_forever()
 
 #
