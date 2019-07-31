@@ -10,4 +10,6 @@ nltk
 
 lime
 
+pytorch>=1.0
+
 gunicorn
