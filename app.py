@@ -75,6 +75,7 @@ def make_app(google_analytics_ua: str,
              baseline_path: str,
              device: int = -1) -> Flask:
     nlp = spacy.load('en_core_web_sm', disable=['vectors', 'textcat', 'parser', 'tagger', 'ner'])
+    nlp.add_pipe(nlp.create_pipe('sentencizer'))
     with open(baseline_path, "rb") as f:
         model = pickle.load(f)
     nbsvm = model.steps[1][1]
