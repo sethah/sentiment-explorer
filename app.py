@@ -28,7 +28,6 @@ from lime.lime_text import LimeTextExplainer
 # from allennlp.data import Vocabulary
 # from allennlp.data.dataset_readers import DatasetReader
 
-import torch
 from flask import Flask, request, Response, jsonify, render_template, send_from_directory
 from flask_cors import CORS
 from gevent.pywsgi import WSGIServer

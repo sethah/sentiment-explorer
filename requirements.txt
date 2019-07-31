@@ -10,6 +10,4 @@ nltk
 
 lime
 
-torch>=1.0
-
 gunicorn
