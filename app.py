@@ -13,6 +13,8 @@ import sys
 import hashlib
 from pathlib import Path
 import numpy as np
+import sys
+sys.path.append("nbsvm")
 
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
@@ -20,6 +22,8 @@ from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import stopwords
 
 from lime.lime_text import LimeTextExplainer
+
+from nbsvm import NBSVM
 
 # from allennlp.models.archival import load_archive
 # from allennlp.data.tokenizers.sentence_splitter import SpacySentenceSplitter
