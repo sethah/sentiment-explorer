@@ -13,6 +13,7 @@ import sys
 import hashlib
 from pathlib import Path
 import numpy as np
+import spacy
 import sys
 sys.path.append("nbsvm")
 
@@ -73,6 +74,7 @@ def make_app(google_analytics_ua: str,
              bert_path: str,
              baseline_path: str,
              device: int = -1) -> Flask:
+    nlp = spacy.load('en_core_web_sm', disable=['vectors', 'textcat', 'parser', 'tagger', 'ner'])
     with open(baseline_path, "rb") as f:
         model = pickle.load(f)
     nbsvm = model.steps[1][1]
@@ -80,7 +82,8 @@ def make_app(google_analytics_ua: str,
     def nbsvm_predict(texts: List[str]):
         return model.predict_proba(texts)
     # splitter = SpacySentenceSplitter()
-    split_expr = lambda x: x.split()
+    # split_expr = lambda x: x.split()
+    split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
     nbsvm_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
                                   bow=True, split_expression=split_expr)
     # model_path = Path(bert_path)

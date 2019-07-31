@@ -11,3 +11,5 @@ nltk
 lime
 
 gunicorn
+
+spacy
