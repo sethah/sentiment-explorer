@@ -21,12 +21,12 @@ from nltk.corpus import stopwords
 
 from lime.lime_text import LimeTextExplainer
 
-from allennlp.models.archival import load_archive
-from allennlp.data.tokenizers.sentence_splitter import SpacySentenceSplitter
-from allennlp.predictors import Predictor
-from allennlp.common import Params
-from allennlp.data import Vocabulary
-from allennlp.data.dataset_readers import DatasetReader
+# from allennlp.models.archival import load_archive
+# from allennlp.data.tokenizers.sentence_splitter import SpacySentenceSplitter
+# from allennlp.predictors import Predictor
+# from allennlp.common import Params
+# from allennlp.data import Vocabulary
+# from allennlp.data.dataset_readers import DatasetReader
 
 import torch
 from flask import Flask, request, Response, jsonify, render_template, send_from_directory
@@ -191,20 +191,21 @@ def make_app(google_analytics_ua: str,
     nbsvm.predict_proba = nbsvm._predict_proba_lr
     def nbsvm_predict(texts: List[str]):
         return model.predict_proba(texts)
-    splitter = SpacySentenceSplitter()
+    # splitter = SpacySentenceSplitter()
+    split_expr = lambda x: x.split()
     nbsvm_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
-                                  bow=True, split_expression=splitter.split_sentences)
-    model_path = Path(bert_path)
-    archive = load_archive(model_path / "model.tar.gz")
-    bert_model = archive.model
-    bert_model.eval()
-    if device >= 0:
-        bert_model.to(device)
-    params = Params.from_file(model_path / "config.json")
-    reader = DatasetReader.from_params(params.get("dataset_reader"))
-    batch_size = 32
-    bert_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
-                                  bow=False, split_expression=splitter.split_sentences)
+                                  bow=True, split_expression=split_expr)
+    # model_path = Path(bert_path)
+    # archive = load_archive(model_path / "model.tar.gz")
+    # bert_model = archive.model
+    # bert_model.eval()
+    # if device >= 0:
+    #     bert_model.to(device)
+    # params = Params.from_file(model_path / "config.json")
+    # reader = DatasetReader.from_params(params.get("dataset_reader"))
+    # batch_size = 32
+    # bert_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
+    #                               bow=False, split_expression=splitter.split_sentences)
 
     app = Flask(__name__) # pylint: disable=invalid-name
 
@@ -245,11 +246,11 @@ def make_app(google_analytics_ua: str,
         # Log the query
         app.logger.info(f"<{previous_str}> <{next_str}>")
 
-        lime_tokens = splitter.split_sentences(previous_str)
+        lime_tokens = split_expr(previous_str)
 
         model_name = data.get("model_name", "BERT")
         app.logger.info(f"Using model {model_name}")
-        if model_name == 'NBSVM':
+        if model_name == 'NBSVM' or True:
             preds = model.predict([previous_str])
             class_probabilities = model.predict_proba([previous_str])[0].tolist()
             label = preds[0]
@@ -259,31 +260,31 @@ def make_app(google_analytics_ua: str,
                                                      num_samples=100)
             score_dict = dict(explanation.as_list(1))
             lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
-        else:
-            def _lime_predict(texts: List[str]) -> np.ndarray:
-                with torch.no_grad():
-                    instances = [reader.text_to_instance(t) for t in texts]
-                    instance_chunks = [instances[x: x + batch_size] for x in
-                                       range(0, len(instances), batch_size)]
-                    preds = []
-                    for batch in instance_chunks:
-                        pred = bert_model.forward_on_instances(batch)
-                        preds.extend(pred)
-                probs = [p['probs'] for p in preds]
-                return np.stack(probs, axis=0)
-
-            inst = reader.text_to_instance(previous_str)
-            print(inst.fields['tokens'].tokens)
-            out = bert_model.forward_on_instance(inst)
-            print(out.keys())
-            class_probabilities = out['probs'].tolist()
-            label = out['label']
-            explanation = bert_explainer.explain_instance(previous_str, _lime_predict,
-                                                           num_features=10,
-                                                           labels=[1],
-                                                           num_samples=100)
-            score_dict = dict(explanation.as_list(1))
-            lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
+        # else:
+        #     def _lime_predict(texts: List[str]) -> np.ndarray:
+        #         with torch.no_grad():
+        #             instances = [reader.text_to_instance(t) for t in texts]
+        #             instance_chunks = [instances[x: x + batch_size] for x in
+        #                                range(0, len(instances), batch_size)]
+        #             preds = []
+        #             for batch in instance_chunks:
+        #                 pred = bert_model.forward_on_instances(batch)
+        #                 preds.extend(pred)
+        #         probs = [p['probs'] for p in preds]
+        #         return np.stack(probs, axis=0)
+        #
+        #     inst = reader.text_to_instance(previous_str)
+        #     print(inst.fields['tokens'].tokens)
+        #     out = bert_model.forward_on_instance(inst)
+        #     print(out.keys())
+        #     class_probabilities = out['probs'].tolist()
+        #     label = out['label']
+        #     explanation = bert_explainer.explain_instance(previous_str, _lime_predict,
+        #                                                    num_features=10,
+        #                                                    labels=[1],
+        #                                                    num_samples=100)
+        #     score_dict = dict(explanation.as_list(1))
+        #     lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
         app.logger.info(label)
         app.logger.info(lime_scores)
         app.logger.info(lime_tokens)
