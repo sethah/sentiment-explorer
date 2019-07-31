@@ -35,7 +35,6 @@ from gevent.pywsgi import WSGIServer
 logging.basicConfig(level=logging.INFO)
 
 import nltk
-nltk.download('wordnet')
 stemmer = SnowballStemmer('english')
 stopWords = set(stopwords.words('english'))
 class LemmaTokenizer(object):
