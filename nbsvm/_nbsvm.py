@@ -9,6 +9,7 @@ from sklearn.utils.validation import check_X_y
 from sklearn.utils.multiclass import unique_labels
 from sklearn.svm import LinearSVC
 
+
 def log_normalize_count_vector(arr):
     """
     Takes count vector and normalizes by L1 norm, then takes log.
