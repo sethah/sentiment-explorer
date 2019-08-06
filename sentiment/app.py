@@ -1,20 +1,10 @@
-"""
-"""
-
-from typing import List, Callable, NamedTuple
-import argparse
-import json
+from typing import List
 import pickle
 import logging
-import os
-import random
-from string import Template
-import sys
 import hashlib
-from pathlib import Path
 import numpy as np
 import spacy
-import sys, inspect
+import sys
 sys.path.append("nbsvm")
 
 import nltk
@@ -31,8 +21,6 @@ from lime.lime_text import LimeTextExplainer
 from nbsvm import NBSVM
 
 from flask import Flask, request, Response, jsonify, render_template, send_from_directory
-from flask_cors import CORS
-from gevent.pywsgi import WSGIServer
 
 logging.basicConfig(level=logging.INFO)
 
@@ -48,14 +36,9 @@ class LemmaTokenizer(object):
     def __call__(self, articles):
         return [stemmer.stem(self.wnl.lemmatize(t)) for t in word_tokenize(articles) if t not in stopWords]
 
-print(LemmaTokenizer.__module__)
-print("asdflkjjk")
-current_module = sys.modules[__name__]
-print(current_module)
-print(sys.modules["__main__"])
+# this was done to make sure the model unpickles correctly (may not actually be necessary)
 setattr(sys.modules["__main__"], LemmaTokenizer.__name__, LemmaTokenizer)
-clsmembers = inspect.getmembers(sys.modules[__name__], inspect.isclass)
-print(clsmembers)
+
 
 class ServerError(Exception):
     status_code = 400
@@ -88,15 +71,14 @@ with open("./models/nbsvm_imdb_sent_500.pkl", "rb") as f:
 nbsvm = model.steps[1][1]
 nbsvm.predict_proba = nbsvm._predict_proba_lr
 
-def _nbsvm_predict(texts: List[str]):
+
+def nbsvm_predict(texts: List[str]) -> np.ndarray:
     return model.predict_proba(texts)
-nbsvm_predict = _nbsvm_predict
-model2 = model
 
 split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
-# split_expr = lambda text: text.split()
 nbsvm_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
                                         bow=True, split_expression=split_expr)
+
 
 @app.errorhandler(ServerError)
 def handle_invalid_usage(error: ServerError) -> Response: # pylint: disable=unused-variable
@@ -104,17 +86,20 @@ def handle_invalid_usage(error: ServerError) -> Response: # pylint: disable=unus
     response.status_code = error.status_code
     return response
 
+
 @app.route('/')
 def index() -> Response: # pylint: disable=unused-variable
     return render_template(
         'app2.html',
-        google_analytics_ua="UA-120916510-5",
+        google_analytics_ua="UA-120916510-5",  # TODO:don't hardcode this!
         js_hash=js_hash
     )
+
 
 @app.route('/static/<path:path>')
 def static_proxy(path: str) -> Response: # pylint: disable=unused-variable
     return send_from_directory('static', path)
+
 
 @app.route('/predict', methods=['POST', 'OPTIONS'])
 def predict() -> Response:  # pylint: disable=unused-variable
@@ -123,6 +108,7 @@ def predict() -> Response:  # pylint: disable=unused-variable
 
     data = request.get_json()
 
+    # TODO: the "next" is left over from the AllenAI app this was copied from
     previous_str = data["previous"]
     next_str = data.get("next")
 
@@ -159,15 +145,4 @@ def predict() -> Response:  # pylint: disable=unused-variable
     })
 
 if __name__ == "__main__":
-    class LemmaTokenizer(object):
-        def __init__(self):
-            self.wnl = WordNetLemmatizer()
-
-        def __call__(self, articles):
-            return [stemmer.stem(self.wnl.lemmatize(t)) for t in word_tokenize(articles) if
-                    t not in stopWords]
-
-
-    print(LemmaTokenizer.__module__)
-    print("asdflkjjasdflkj;ksjjkk")
     app.run(host='0.0.0.0', threaded=False)

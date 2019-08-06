@@ -1,6 +1,13 @@
 ## Running with Docker
 
+Copy AWS credentials
+
 ```bash
+cp -r /path/to/.aws/ sentiment/s3config
+```
+
+```bash
+
 # This creates a local directory where the model can be cached so you don't
 # have to download it everytime you execute 'docker run'.
 $ mkdir -p /$HOME/.pytorch_pretrained_bert

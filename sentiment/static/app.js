@@ -16,7 +16,7 @@ class Review extends React.Component {
       grem,
     } = this.props
     if (!class_probabilities) {
-        return null
+      return null
     }
     let threshold = 0.5
     let winner_index, scaleWinner, scaleLoser
@@ -55,23 +55,23 @@ class Review extends React.Component {
           marginBottom: grem,
         }}
       >
-          <div style={{ marginTop: grem * 0, marginBottom: grem * 0 }}>
-            <div
-              style={{
-                background: scaleWinner(class_probabilities[winner_index]),
-              }}
-            >
-              <span>
-                classification:{' '}
-                {class_labels[winner_index]}
-              </span>{' '}
-              &middot;{' '}
-              <span style={{}}>
-                {Math.floor(class_probabilities[winner_index] * 1000) / 10}%
-                certainty
+        <div style={{ marginTop: grem * 0, marginBottom: grem * 0 }}>
+          <div
+            style={{
+              background: scaleWinner(class_probabilities[winner_index]),
+            }}
+          >
+            <span>
+              classification:{' '}
+              {class_labels[winner_index]}
+            </span>{' '}
+            &middot;{' '}
+            <span style={{}}>
+              {Math.floor(class_probabilities[winner_index] * 1000) / 10}%
+              certainty
               </span>
-            </div>
           </div>
+        </div>
 
         <div style={{ marginBottom: grem * 0 }}>
           <div>
@@ -155,7 +155,7 @@ const OutputText = styled.p`
     color: ${props => props.inputColor || "palevioletred"};
 `;
 
-const SentimentOutput = ({sentiment}) => {
+const SentimentOutput = ({ sentiment }) => {
 }
 
 const LinkHome = styled.a`
@@ -335,9 +335,9 @@ function addToUrl(output, choice) {
 
 function loadFromUrl() {
   const params =
-      document.location.search.substr(1).split('&').map(p => p.split('='));
+    document.location.search.substr(1).split('&').map(p => p.split('='));
   const text = params.find(p => p[0] === 'text');
-  return Array.isArray(text) && text.length == 2 ?  decodeURIComponent(text.pop()) : null;
+  return Array.isArray(text) && text.length == 2 ? decodeURIComponent(text.pop()) : null;
 }
 
 function trimRight(str) {
@@ -379,10 +379,10 @@ class App extends React.Component {
     const trimmed = trimRight(value);
 
     this.setState({
-        prev: this.state.output,
-        output: value,
-        label: null,
-        loading: trimmed.length > 0
+      prev: this.state.output,
+      output: value,
+      label: null,
+      loading: trimmed.length > 0
     })
     this.debouncedChoose()
   }
@@ -420,15 +420,15 @@ class App extends React.Component {
   }
 
   choose(choice = undefined, doNotChangeUrl) {
-    //this.setState({ loading: true, error: false })
+    // reset the state here or you'll just layer new stuff on top of it
     this.setState({
-        words: null,
-        label: null,
-        lime_tokens: null,
-        lime_scores: null,
-        class_probabilities: null,
-        loading: true,
-        error: false
+      words: null,
+      label: null,
+      lime_tokens: null,
+      lime_scores: null,
+      class_probabilities: null,
+      loading: true,
+      error: false
     })
 
     // strip trailing spaces
@@ -458,31 +458,31 @@ class App extends React.Component {
     fetch(endpoint, {
       method: "POST",
       headers: {
-          "Content-Type": "application/json",
+        "Content-Type": "application/json",
       },
       body: JSON.stringify(payload)
     })
-    .then(response => response.json())
-    .then(data => {
-      if (this.currentRequestId === currentReqId) {
-        // If the user entered text by typing don't overwrite it, as that feels
-        // weird. If they clicked it overwrite it
-        const output = choice === undefined ? this.state.output : data.output
-        this.setState({...data, output, loading: false})
-      }
-    })
-    .catch(err => {
-      console.error('Error trying to communicate with the API:', err);
-      this.setState({ error: true, loading: false });
-    });
+      .then(response => response.json())
+      .then(data => {
+        if (this.currentRequestId === currentReqId) {
+          // If the user entered text by typing don't overwrite it, as that feels
+          // weird. If they clicked it overwrite it
+          const output = choice === undefined ? this.state.output : data.output
+          this.setState({ ...data, output, loading: false })
+        }
+      })
+      .catch(err => {
+        console.error('Error trying to communicate with the API:', err);
+        this.setState({ error: true, loading: false });
+      });
   }
 
   // Temporarily (?) disabled
   runOnEnter(e) {
     if (e.key === 'Enter') {
-        e.preventDefault()
-        e.stopPropagation()
-        this.choose()
+      e.preventDefault()
+      e.stopPropagation()
+      this.choose()
     }
   }
 
@@ -494,18 +494,18 @@ class App extends React.Component {
           <AppName>Textflix Sentiment Analyzer</AppName>
         </Title>
         <Intro>
-        This is a sentiment analyzer. You write a review and we tell you how you felt about it.
+          This is a sentiment analyzer. You write a review and we tell you how you felt about it.
         </Intro>
         <span>Choose which model to use:
-        <ModelSwitcher model={this.state.model} switchModel={this.switchModel}/>
+        <ModelSwitcher model={this.state.model} switchModel={this.switchModel} />
         </span>
         <InputOutput>
           <InputOutputColumn>
             <InputHeader>Sentence:</InputHeader>
             <TextInputWrapper>
               <TextInput type="text"
-                        value={this.state.output}
-                        onChange={this.setOutput}/>
+                value={this.state.output}
+                onChange={this.setOutput} />
               {this.state.loading ? (
                 <Loading>
                   <img src="/static/loading-bars.svg" width="25" height="25" />
@@ -522,10 +522,10 @@ class App extends React.Component {
           <InputOutputColumn>
             <InputHeader>Sentiment:</InputHeader>
             <Review class_probabilities={this.state.class_probabilities}
-                label={this.state.label}
-                lime_tokens={this.state.lime_tokens}
-                lime_scores={this.state.lime_scores}
-                grem='1'
+              label={this.state.label}
+              lime_tokens={this.state.lime_tokens}
+              lime_scores={this.state.lime_scores}
+              grem='1'
             />
           </InputOutputColumn>
         </InputOutput>
@@ -537,12 +537,12 @@ class App extends React.Component {
   }
 }
 
-const ModelSwitcher = ({model, switchModel}) => (
+const ModelSwitcher = ({ model, switchModel }) => (
   <span className="model-switcher" onClick={switchModel}>
     {' '}
-    <ModelChoice selected={model==="BERT"}>BERT</ModelChoice>
+    <ModelChoice selected={model === "BERT"}>BERT</ModelChoice>
     {' '}
-    <ModelChoice selected={model==="NBSVM"}>NBSVM</ModelChoice>
+    <ModelChoice selected={model === "NBSVM"}>NBSVM</ModelChoice>
     {' '}
   </span>
 )
@@ -552,7 +552,7 @@ const formatProbability = prob => {
   return `${prob.toFixed(1)}%`
 }
 
-const Sentences = ({sentences}) => {
+const Sentences = ({ sentences }) => {
   if (!sentences) { return null }
 
   return <p>{sentences.join(" ")}</p>
