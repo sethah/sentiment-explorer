@@ -8,6 +8,7 @@ instance/
 .pytest_cache/
 .coverage
 htmlcov/
+sentiment/s3config
 
 dist/
 build/

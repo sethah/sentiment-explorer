@@ -17,6 +17,10 @@ import spacy
 import sys
 sys.path.append("nbsvm")
 
+import nltk
+nltk.download('stopwords')
+nltk.download('wordnet')
+nltk.download('punkt')
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.stem.snowball import SnowballStemmer
@@ -224,6 +228,7 @@ def main(args):
         print(f"Model loaded, serving demo on port {args.port}")
     else:
         port = int(os.environ.get("PORT"))
+        port = 5000
         http_server = WSGIServer(('0.0.0.0', port), app, log=sys.stdout)
         print(f"Model loaded, serving demo on port {port}")
         http_server.serve_forever()
@@ -238,4 +243,16 @@ _HTML = """
 """
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    app = make_app(google_analytics_ua=os.environ.get(
+        "GOOGLE_ANALYTICS_UA",
+        "UA-120916510-5"  # Defaults to the development / staging UA
+    ), device=0,
+        bert_path="",
+        baseline_path="nbsvm_imdb_sent_500.pkl")
+    app.run(host='0.0.0.0', threaded=False)
+    # CORS(app)
+    # port = 5000
+    # http_server = WSGIServer(('0.0.0.0', port), app, log=sys.stdout)
+    # print(f"Model loaded, serving demo on port {port}")
+    # http_server.serve_forever()
+    # main(sys.argv[1:])

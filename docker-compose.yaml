@@ -1,0 +1,13 @@
+version: '3'
+
+services:
+  nginx:
+    restart: always
+    build: ./nginx
+    ports:
+      - "80:80"
+    links:
+      - sentiment:sentiment
+  sentiment:
+    restart: always
+    build: ./sentiment
