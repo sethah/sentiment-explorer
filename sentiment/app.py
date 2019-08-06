@@ -93,8 +93,8 @@ def _nbsvm_predict(texts: List[str]):
 nbsvm_predict = _nbsvm_predict
 model2 = model
 
-# split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
-split_expr = lambda text: text.split()
+split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
+# split_expr = lambda text: text.split()
 nbsvm_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
                                         bow=True, split_expression=split_expr)
 
