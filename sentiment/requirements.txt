@@ -7,6 +7,7 @@ gevent
 scikit-learn
 
 nltk
+allennlp
 
 lime
 
