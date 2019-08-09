@@ -11,7 +11,9 @@ allennlp
 
 lime
 
-https://download.pytorch.org/whl/cpu/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
+#torch
+torch==1.0.1 -f https://download.pytorch.org/whl/cu90/stable
+#https://download.pytorch.org/whl/cpu/torch-1.1.0-cp36-cp36m-linux_x86_64.whl
 
 gunicorn
 

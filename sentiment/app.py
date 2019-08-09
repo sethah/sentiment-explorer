@@ -70,7 +70,7 @@ app = Flask(__name__) # pylint: disable=invalid-name
 # We hash the javascript file and use it as a cache breaker
 hasher = hashlib.md5()
 app_js = open("static/app.js")
-hasher.update(app_js.read().encode())
+hasher.update(app_js.read().encode('utf-8'))
 js_hash=hasher.hexdigest()
 
 nlp = spacy.load('en_core_web_sm', disable=['vectors', 'textcat', 'tagger', 'ner'])
@@ -88,11 +88,11 @@ split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
 nbsvm_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
                                         bow=True, split_expression=split_expr)
 
-model_path = Path("/models/bert_base_1000.tar.gz")
+model_path = Path("/models/bert_large_2000.tar.gz")
 archive = load_archive(model_path)
 bert_model = archive.model
 bert_model.eval()
-device = -1
+device = 0
 if device >= 0:
     bert_model.to(device)
 # params = Params.from_file(model_path / "config.json")
@@ -101,7 +101,7 @@ reader = DatasetReader.from_params(params.get("dataset_reader"))
 batch_size = 32
 bert_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
                                    bow=False, split_expression=split_expr)
-
+app.logger.info("HERE WE ARE")
 
 @app.errorhandler(ServerError)
 def handle_invalid_usage(error: ServerError) -> Response: # pylint: disable=unused-variable
