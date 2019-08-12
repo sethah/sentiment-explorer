@@ -196,9 +196,7 @@ def predict() -> Response:  # pylint: disable=unused-variable
 
     data = request.get_json()
 
-    # TODO: the "next" is left over from the AllenAI app this was copied from
     previous_str = data["previous"]
-    next_str = data.get("next")
 
     # Log the query
     app.logger.info(f"<{previous_str}> <{next_str}>")

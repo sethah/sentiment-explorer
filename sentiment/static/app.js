@@ -440,7 +440,6 @@ class App extends React.Component {
 
     const payload = {
       previous: trimmedOutput,
-      next: choice,
       numsteps: 5,
       model_name: this.state.model
     }

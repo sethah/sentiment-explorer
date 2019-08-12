@@ -1,15 +1,17 @@
-## Running with Docker
+## Download models
 
 Download models to host so that they don't need to be downloaded on startup every time.
 
 ```bash
-mkdir $HOME/.models
+mkdir -p /$HOME/.models
 mkdir -p /$HOME/.pytorch_pretrained_bert
-pushd $HOME/.models
+pushd /$HOME/.models
 curl -O https://sentiment-explorer.s3-us-west-1.amazonaws.com/nbsvm_imdb_sent_500.pkl
 curl -O https://sentiment-explorer.s3-us-west-1.amazonaws.com/bert_base_1000.tar.gz
 popd
 ```
+
+## Running with Docker
 
 Run with docker-compose (webapp + nginx)
 
