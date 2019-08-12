@@ -39,11 +39,13 @@ RUN python3.6 get-pip.py
 
 RUN cd /tmp && \
     python3.6 -m pip install -U pip && \
-    python3.6 -m pip install -U cython awscli && \
-    rm -rf /tmp/* ~/.cache/pip 
+    rm -rf /tmp/* ~/.cache/pip
 
 RUN python3.6 -m pip install -f https://download.pytorch.org/whl/cu90/stable -r requirements.txt
 RUN python3.6 -m pip install awscli
+RUN python3.6 -m nltk.downloader punkt
+RUN python3.6 -m nltk.downloader wordnet
+RUN python3.6 -m nltk.downloader stopwords
 
 COPY . /local
 

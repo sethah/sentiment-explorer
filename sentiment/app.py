@@ -4,31 +4,22 @@ import pickle
 import logging
 import hashlib
 import numpy as np
-import os
 import spacy
 import shutil
 import sys
+import tarfile
+import tempfile
 import torch
 sys.path.append("nbsvm")
 
-import nltk
-nltk.download('stopwords')
-nltk.download('wordnet')
-nltk.download('punkt')
 from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import stopwords
 
-import tarfile
-import tempfile
-
 from lime.lime_text import LimeTextExplainer
 
 from allennlp.models.archival import load_archive
-from allennlp.data.tokenizers.sentence_splitter import SpacySentenceSplitter
-from allennlp.predictors import Predictor
-from allennlp.common import Params
 from allennlp.data import Vocabulary
 from allennlp.data.dataset_readers import DatasetReader
 
@@ -99,17 +90,22 @@ class AllenNLPLimePredictor(LimePredictor):
         self.model = archive.model.eval()
         self.batch_size = batch_size
         self.reader = DatasetReader.from_params(self.params.get("dataset_reader"))
-        tempdir = tempfile.mkdtemp()
-        with tarfile.open(archive_path, 'r:gz') as _archive:
-            _archive.extractall(tempdir)
-        vocab_path = Path(tempdir) / "vocabulary"
-        self.vocab = Vocabulary.from_files(vocab_path)
-        shutil.rmtree(tempdir)
-        # self.vocab = Vocabulary.from_params(self.params)
+        self.vocab = self._load_vocab(archive_path)
         self.idx2label = self.vocab.get_index_to_token_vocabulary('labels')
         if device != -1:
             self.model.to(f"cuda:{device}")
         super(AllenNLPLimePredictor, self).__init__(self.idx2label)
+
+    @staticmethod
+    def _load_vocab(archive_path: Path) -> Vocabulary:
+        # an annoying hack to load the vocab file
+        tempdir = tempfile.mkdtemp()
+        with tarfile.open(archive_path, 'r:gz') as _archive:
+            _archive.extractall(tempdir)
+        vocab_path = Path(tempdir) / "vocabulary"
+        vocab = Vocabulary.from_files(vocab_path)
+        shutil.rmtree(tempdir)
+        return vocab
 
     def predict(self, text: str) -> Dict[str, np.ndarray]:
         return self.model.forward_on_instance(self.reader.text_to_instance(text))
@@ -168,20 +164,6 @@ models = {
     'nbsvm': {'explainer': nbsvm_explainer, 'predictor': nbsvm_predictor}
 }
 
-# model_path = Path("/models/bert_large_2000.tar.gz")
-# archive = load_archive(model_path)
-# bert_model = archive.model
-# bert_model.eval()
-# if torch.cuda.is_available():
-#     bert_model.to("cuda:0")
-# params = archive.config
-# vocab = Vocabulary.from_params(params)
-# num_classes = vocab.get_vocab_size('label')
-# class_names = [vocab.get_token_from_index(i, namespace='label') for i in range(num_classes)]
-# reader = DatasetReader.from_params(params.get("dataset_reader"))
-# batch_size = 32
-# bert_explainer = LimeTextExplainer(class_names=class_names,
-#                                    bow=False, split_expression=split_expr)
 
 @app.errorhandler(ServerError)
 def handle_invalid_usage(error: ServerError) -> Response: # pylint: disable=unused-variable
@@ -193,7 +175,7 @@ def handle_invalid_usage(error: ServerError) -> Response: # pylint: disable=unus
 @app.route('/')
 def index() -> Response: # pylint: disable=unused-variable
     return render_template(
-        'app2.html',
+        'app.html',
         google_analytics_ua="UA-120916510-5",  # TODO:don't hardcode this!
         js_hash=js_hash
     )
