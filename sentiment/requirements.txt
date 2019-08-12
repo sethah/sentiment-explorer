@@ -17,5 +17,7 @@ torch==1.0.1 -f https://download.pytorch.org/whl/cu90/stable
 
 gunicorn
 
+git+https://github.com/fastforwardlabs/nbsvm
+
 spacy
 https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-1.2.0/en_core_web_sm-1.2.0.tar.gz

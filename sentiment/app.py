@@ -24,8 +24,6 @@ from allennlp.models.archival import load_archive
 from allennlp.data import Vocabulary
 from allennlp.data.dataset_readers import DatasetReader
 
-from nbsvm import NBSVM
-
 from flask import Flask, request, Response, jsonify, render_template, send_from_directory
 
 logging.basicConfig(level=logging.INFO)
