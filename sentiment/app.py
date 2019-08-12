@@ -1,15 +1,16 @@
-from typing import Dict, List
-from pathlib import Path
 import pickle
 import logging
 import hashlib
 import numpy as np
+import os
+from pathlib import Path
 import spacy
 import shutil
 import sys
 import tarfile
 import tempfile
 import torch
+from typing import Dict, List
 sys.path.append("nbsvm")
 
 from nltk import word_tokenize
@@ -62,7 +63,8 @@ class LimePredictor(object):
 class NBSVMLimePredictor(LimePredictor):
 
     def __init__(self, model_path: str):
-        with open(model_path, "rb") as f:
+        model_path = Path(model_path)
+        with open(str(model_path), "rb") as f:
             self.model = pickle.load(f)
         nbsvm = self.model.steps[1][1]
         nbsvm.predict_proba = nbsvm._predict_proba_lr
@@ -151,9 +153,10 @@ nlp = spacy.load('en_core_web_sm', disable=['vectors', 'textcat', 'tagger', 'ner
 nlp.add_pipe(nlp.create_pipe('sentencizer'))
 split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
 
-nbsvm_predictor = NBSVMLimePredictor("/models/nbsvm_imdb_sent_500.pkl")
+home_path = Path(os.environ.get("HOME", "."))
+nbsvm_predictor = NBSVMLimePredictor(home_path / ".models/nbsvm_imdb_sent_500.pkl")
 device = 0 if torch.cuda.is_available() else -1
-bert_predictor = AllenNLPLimePredictor("/models/bert_base_1000.tar.gz", device=device)
+bert_predictor = AllenNLPLimePredictor(home_path / ".models/bert_base_1000.tar.gz", device=device)
 
 nbsvm_explainer = LimeTextExplainer(class_names=nbsvm_predictor.class_names,
                                   bow=True, split_expression=split_expr)

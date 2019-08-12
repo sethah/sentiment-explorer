@@ -12,6 +12,6 @@ services:
     restart: always
     runtime: nvidia
     volumes:
-      - $HOME/.models/:/models
+      - $HOME/.models/:/root/.models
       - $HOME/.pytorch_pretrained_bert/:/root/.pytorch_pretrained_bert
     build: ./sentiment

@@ -29,3 +29,15 @@ nvidia-docker run -p 5000:5000 \
 sentiment-explorer:latest
 ```
 
+## Run without docker
+
+Create a Python virtual environment (Python 3.6 or later)
+
+```bash
+cd sentiment
+pip install -r requirements.txt
+gunicorn --timeout 60 --bind 0.0.0.0:5000 wsgi
+```
+
+
+
