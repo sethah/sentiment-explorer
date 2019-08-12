@@ -153,7 +153,7 @@ split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
 
 nbsvm_predictor = NBSVMLimePredictor("/models/nbsvm_imdb_sent_500.pkl")
 device = 0 if torch.cuda.is_available() else -1
-bert_predictor = AllenNLPLimePredictor("/models/bert_large_2000.tar.gz", device=device)
+bert_predictor = AllenNLPLimePredictor("/models/bert_base_1000.tar.gz", device=device)
 
 nbsvm_explainer = LimeTextExplainer(class_names=nbsvm_predictor.class_names,
                                   bow=True, split_expression=split_expr)

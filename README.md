@@ -1,34 +1,31 @@
 ## Running with Docker
 
-Copy AWS credentials
+Download models to host so that they don't need to be downloaded on startup every time.
 
 ```bash
-cp -r /path/to/.aws/ sentiment/s3config
+mkdir $HOME/.models
+mkdir -p /$HOME/.pytorch_pretrained_bert
+pushd $HOME/.models
+curl -O https://sentiment-explorer.s3-us-west-1.amazonaws.com/nbsvm_imdb_sent_500.pkl
+curl -O https://sentiment-explorer.s3-us-west-1.amazonaws.com/bert_base_1000.tar.gz
+popd
 ```
+
+Run with docker-compose (webapp + nginx)
 
 ```bash
-
-# This creates a local directory where the model can be cached so you don't
-# have to download it everytime you execute 'docker run'.
-$ mkdir -p /$HOME/.pytorch_pretrained_bert
-$ docker build -t lm-explorer:latest .
-$ docker run -p 8000:8000 \
-    -v /$HOME/.pytorch_pretrained_bert:/root/.pytorch_pretrained_bert \
-    -v $(pwd):/local \
-    lm-explorer:latest \
-    python app.py --port 8000 --dev
+docker-compose build
+docker-compose up
 ```
 
-## Running without Docker
-
-First create and activate a Python 3.6 (or later) virtual environment. Then install the requirements
+Run just the web app with docker
 
 ```bash
-$ pip install -r requirements.txt
+cd sentiment
+nvidia-docker build -t sentiment-explorer:latest .
+nvidia-docker run -p 5000:5000 \
+-v $HOME/.models/:/models \
+-v $HOME/.pytorch_pretrained_bert/:/root/.pytorch_pretrained_bert \
+sentiment-explorer:latest
 ```
 
-and start the app
-
-```bash
-$ python app.py --port 8000 --dev
-```
