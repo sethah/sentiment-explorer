@@ -1,10 +1,12 @@
-from typing import List
+from typing import Dict, List
 from pathlib import Path
 import pickle
 import logging
 import hashlib
 import numpy as np
+import os
 import spacy
+import shutil
 import sys
 import torch
 sys.path.append("nbsvm")
@@ -17,6 +19,9 @@ from nltk import word_tokenize
 from nltk.stem import WordNetLemmatizer
 from nltk.stem.snowball import SnowballStemmer
 from nltk.corpus import stopwords
+
+import tarfile
+import tempfile
 
 from lime.lime_text import LimeTextExplainer
 
@@ -49,6 +54,79 @@ class LemmaTokenizer(object):
 setattr(sys.modules["__main__"], LemmaTokenizer.__name__, LemmaTokenizer)
 
 
+class LimePredictor(object):
+
+    def __init__(self, idx2label: Dict[int, str]):
+        self.idx2label = idx2label
+        self.label2idx = {v: k for k, v in idx2label.items()}
+        self.class_names = [idx2label[i] for i in range(len(self.idx2label))]
+
+    def predict(self, text: str) -> Dict[str, np.ndarray]:
+        raise NotImplementedError
+
+    def predict_batch(self, texts: List[str]) -> np.ndarray:
+        raise NotImplementedError
+
+
+class NBSVMLimePredictor(LimePredictor):
+
+    def __init__(self, model_path: str):
+        with open(model_path, "rb") as f:
+            self.model = pickle.load(f)
+        nbsvm = self.model.steps[1][1]
+        nbsvm.predict_proba = nbsvm._predict_proba_lr
+        self.idx2label = {i: l for i, l in enumerate(nbsvm.classes_.tolist())}
+        super(NBSVMLimePredictor, self).__init__(self.idx2label)
+
+    def predict(self, text: str) -> Dict[str, np.ndarray]:
+        out = {}
+        out['label'] = self.model.predict([text])[0]
+        logits = self.model.predict_proba([text])[0]
+        out['logits'] = logits
+        out['probs'] = logits
+        return out
+
+    def predict_batch(self, texts: List[str]) -> np.ndarray:
+        return self.model.predict_proba(texts)
+
+
+class AllenNLPLimePredictor(LimePredictor):
+
+    def __init__(self, archive_path: str, device: int = -1, batch_size: int = 32):
+        archive_path = Path(archive_path)
+        archive = load_archive(archive_path)
+        self.params = archive.config
+        self.model = archive.model.eval()
+        self.batch_size = batch_size
+        self.reader = DatasetReader.from_params(self.params.get("dataset_reader"))
+        tempdir = tempfile.mkdtemp()
+        with tarfile.open(archive_path, 'r:gz') as _archive:
+            _archive.extractall(tempdir)
+        vocab_path = Path(tempdir) / "vocabulary"
+        self.vocab = Vocabulary.from_files(vocab_path)
+        shutil.rmtree(tempdir)
+        # self.vocab = Vocabulary.from_params(self.params)
+        self.idx2label = self.vocab.get_index_to_token_vocabulary('labels')
+        if device != -1:
+            self.model.to(f"cuda:{device}")
+        super(AllenNLPLimePredictor, self).__init__(self.idx2label)
+
+    def predict(self, text: str) -> Dict[str, np.ndarray]:
+        return self.model.forward_on_instance(self.reader.text_to_instance(text))
+
+    def predict_batch(self, texts: List[str]) -> np.ndarray:
+        with torch.no_grad():
+            instances = [self.reader.text_to_instance(t) for t in texts]
+            instance_chunks = [instances[x: x + self.batch_size] for x in
+                               range(0, len(instances), self.batch_size)]
+            preds = []
+            for batch in instance_chunks:
+                pred = self.model.forward_on_instances(batch)
+                preds.extend(pred)
+        probs = [p['probs'] for p in preds]
+        return np.stack(probs, axis=0)
+
+
 class ServerError(Exception):
     status_code = 400
 
@@ -71,37 +149,39 @@ app = Flask(__name__) # pylint: disable=invalid-name
 hasher = hashlib.md5()
 app_js = open("static/app.js")
 hasher.update(app_js.read().encode('utf-8'))
-js_hash=hasher.hexdigest()
+js_hash = hasher.hexdigest()
 
 nlp = spacy.load('en_core_web_sm', disable=['vectors', 'textcat', 'tagger', 'ner'])
 nlp.add_pipe(nlp.create_pipe('sentencizer'))
-with open("/models/nbsvm_imdb_sent_500.pkl", "rb") as f:
-    model = pickle.load(f)
-nbsvm = model.steps[1][1]
-nbsvm.predict_proba = nbsvm._predict_proba_lr
-
-
-def nbsvm_predict(texts: List[str]) -> np.ndarray:
-    return model.predict_proba(texts)
-
 split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
-nbsvm_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
-                                        bow=True, split_expression=split_expr)
 
-model_path = Path("/models/bert_large_2000.tar.gz")
-archive = load_archive(model_path)
-bert_model = archive.model
-bert_model.eval()
-device = 0
-if device >= 0:
-    bert_model.to(device)
-# params = Params.from_file(model_path / "config.json")
-params = archive.config
-reader = DatasetReader.from_params(params.get("dataset_reader"))
-batch_size = 32
-bert_explainer = LimeTextExplainer(class_names=['neg', 'pos'],
-                                   bow=False, split_expression=split_expr)
-app.logger.info("HERE WE ARE")
+nbsvm_predictor = NBSVMLimePredictor("/models/nbsvm_imdb_sent_500.pkl")
+device = 0 if torch.cuda.is_available() else -1
+bert_predictor = AllenNLPLimePredictor("/models/bert_large_2000.tar.gz", device=device)
+
+nbsvm_explainer = LimeTextExplainer(class_names=nbsvm_predictor.class_names,
+                                  bow=True, split_expression=split_expr)
+bert_explainer = LimeTextExplainer(class_names=bert_predictor.class_names,
+                                    bow=False, split_expression=split_expr)
+models = {
+    'bert': {'explainer': bert_explainer, 'predictor': bert_predictor},
+    'nbsvm': {'explainer': nbsvm_explainer, 'predictor': nbsvm_predictor}
+}
+
+# model_path = Path("/models/bert_large_2000.tar.gz")
+# archive = load_archive(model_path)
+# bert_model = archive.model
+# bert_model.eval()
+# if torch.cuda.is_available():
+#     bert_model.to("cuda:0")
+# params = archive.config
+# vocab = Vocabulary.from_params(params)
+# num_classes = vocab.get_vocab_size('label')
+# class_names = [vocab.get_token_from_index(i, namespace='label') for i in range(num_classes)]
+# reader = DatasetReader.from_params(params.get("dataset_reader"))
+# batch_size = 32
+# bert_explainer = LimeTextExplainer(class_names=class_names,
+#                                    bow=False, split_expression=split_expr)
 
 @app.errorhandler(ServerError)
 def handle_invalid_usage(error: ServerError) -> Response: # pylint: disable=unused-variable
@@ -140,43 +220,22 @@ def predict() -> Response:  # pylint: disable=unused-variable
 
     lime_tokens = split_expr(previous_str)
 
-    model_name = data.get("model_name", "BERT")
+    model_name = data.get("model_name", "BERT").lower()
+    predictor = models[model_name]['predictor']
+    explainer = models[model_name]['explainer']
     app.logger.info(f"Using model {model_name}")
-    if model_name == 'NBSVM':
-        preds = model.predict([previous_str])
-        class_probabilities = model.predict_proba([previous_str])[0].tolist()
-        label = preds[0]
-        explanation = nbsvm_explainer.explain_instance(previous_str, nbsvm_predict,
-                                                 num_features=10,
-                                                 labels=[1],
-                                                 num_samples=100)
-        score_dict = dict(explanation.as_list(1))
-        lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
-    else:
-        def _lime_predict(texts: List[str]) -> np.ndarray:
-            with torch.no_grad():
-                instances = [reader.text_to_instance(t) for t in texts]
-                instance_chunks = [instances[x: x + batch_size] for x in
-                                    range(0, len(instances), batch_size)]
-                preds = []
-                for batch in instance_chunks:
-                    pred = bert_model.forward_on_instances(batch)
-                    preds.extend(pred)
-            probs = [p['probs'] for p in preds]
-            return np.stack(probs, axis=0)
-    
-        inst = reader.text_to_instance(previous_str)
-        print(inst.fields['tokens'].tokens)
-        out = bert_model.forward_on_instance(inst)
-        print(out.keys())
-        class_probabilities = out['probs'].tolist()
-        label = out['label']
-        explanation = bert_explainer.explain_instance(previous_str, _lime_predict,
-                                                        num_features=10,
-                                                        labels=[1],
-                                                        num_samples=100)
-        score_dict = dict(explanation.as_list(1))
-        lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
+    out = predictor.predict(previous_str)
+    class_probabilities = out['probs'].tolist()
+    label = out['label']
+    explanation = explainer.explain_instance(previous_str, predictor.predict_batch,
+                                             num_features=10, labels=[1], num_samples=100)
+    score_dict = dict(explanation.as_list(1))
+    lime_scores = [score_dict.get(tok, 0.) for tok in lime_tokens]
+    if predictor.label2idx['neg'] != 0:
+        # we need to reverse the lime scores
+        lime_scores = [-1 * score for score in lime_scores]
+    # make sure class probabilities are always consistently ordered
+    class_probabilities = [class_probabilities[predictor.label2idx[lbl]] for lbl in ['neg', 'pos']]
     app.logger.info(label)
     app.logger.info(lime_scores)
     app.logger.info(lime_tokens)
