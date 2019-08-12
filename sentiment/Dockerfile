@@ -37,12 +37,6 @@ RUN apt-get update && \
 RUN wget https://bootstrap.pypa.io/get-pip.py
 RUN python3.6 get-pip.py
 
-ENV PATH /usr/local/cuda/bin/:$PATH
-ENV LD_LIBRARY_PATH /usr/local/cuda/lib:/usr/local/cuda/lib64
-ENV NVIDIA_VISIBLE_DEVICES all
-ENV NVIDIA_DRIVER_CAPABILITIES compute,utility
-LABEL com.nvidia.volumes.needed="nvidia_driver"
-
 RUN cd /tmp && \
     python3.6 -m pip install -U pip && \
     python3.6 -m pip install -U cython awscli && \
@@ -52,10 +46,6 @@ RUN python3.6 -m pip install -f https://download.pytorch.org/whl/cu90/stable -r 
 RUN python3.6 -m pip install awscli
 
 COPY . /local
-# RUN mkdir /root/.aws
-# COPY s3config/config /root/.aws/
-# COPY s3config/credentials /root/.aws/
-# COPY  /root/.aws/config
 
 RUN chmod 777 ./start.sh
 

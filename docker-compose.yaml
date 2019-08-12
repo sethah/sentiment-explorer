@@ -1,10 +1,5 @@
 version: '2.3'
 
-volumes:
-  nvidia_driver:
-    external:
-      name: nvidia_driver_396.44
-
 services:
   nginx:
     restart: always
@@ -12,16 +7,11 @@ services:
     ports:
       - "8082:80"
     links:
-      - sentiment:sentiment
+      - sentiment
   sentiment:
     restart: always
     runtime: nvidia
     volumes:
       - $HOME/.models/:/models
       - $HOME/.pytorch_pretrained_bert/:/root/.pytorch_pretrained_bert
-      - nvidia_driver:/usr/local/nvidia/:ro
-    devices:
-      - /dev/nvidiactl
-      - /dev/nvidia-uvm
-      - /dev/nvidia0
     build: ./sentiment
