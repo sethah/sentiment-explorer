@@ -148,7 +148,7 @@ hasher.update(app_js.read().encode('utf-8'))
 js_hash = hasher.hexdigest()
 
 nlp = spacy.load('en_core_web_sm', disable=['vectors', 'textcat', 'tagger', 'ner'])
-nlp.add_pipe(nlp.create_pipe('sentencizer'))
+# nlp.add_pipe(nlp.create_pipe('sentencizer'))
 split_expr = lambda text: [sent.string.strip() for sent in nlp(text).sents]
 
 home_path = Path(os.environ.get("HOME", "."))
@@ -197,7 +197,7 @@ def predict() -> Response:  # pylint: disable=unused-variable
     previous_str = data["previous"]
 
     # Log the query
-    app.logger.info(f"<{previous_str}> <{next_str}>")
+    app.logger.info(f"<{previous_str}>")
 
     lime_tokens = split_expr(previous_str)
 
@@ -228,7 +228,7 @@ def predict() -> Response:  # pylint: disable=unused-variable
         "label": label,
         "class_probabilities": class_probabilities,
         "words": lime_tokens,
-        "output": previous_str + (next_str or ""),
+        "output": previous_str,
         "sentiment": label
     })
 
